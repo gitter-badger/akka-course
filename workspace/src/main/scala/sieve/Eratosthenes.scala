@@ -1,17 +1,32 @@
 package sieve
 
-import akka.actor.{Actor, ActorLogging, Props}
-import sieve.Eratosthenes.FoundPrime
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import sieve.Eratosthenes.{Done, FoundPrime}
 import sieve.NumberSource.Next
 
 object Eratosthenes {
-  def props(limit: Int): Props = Props(new Eratosthenes(limit))
   case class FoundPrime(prime: Int)
-}
-class Eratosthenes private (numberOfPrimes: Int) extends Actor with ActorLogging {
+  case object Done
 
-  val numberSource = context.actorOf(NumberSource.props(2),"source")
-  val firstSieve = context.actorOf(Sieve.props(context.self))
+  def props(limit: Int, target: ActorRef): Props = {
+    Props(new Eratosthenes(limit, target))
+  }
+
+  def props(limit: Int, target: ActorRef,
+            numberSourceProps: Int => Props = NumberSource.props,
+            sieveProps: ActorRef => Props = Sieve.props
+           ): Props = Props(new Eratosthenes(limit, target, numberSourceProps, sieveProps))
+}
+
+class Eratosthenes private (
+  numberOfPrimes: Int,
+  target: ActorRef,
+  numberSourceProps: Int => Props = NumberSource.props,
+  sieveProps: ActorRef => Props = Sieve.props
+  ) extends Actor with ActorLogging {
+
+  val numberSource = context.actorOf(numberSourceProps(2),"source")
+  val firstSieve = context.actorOf(sieveProps(context.self))
 
   var toFind = numberOfPrimes
 
@@ -25,11 +40,12 @@ class Eratosthenes private (numberOfPrimes: Int) extends Actor with ActorLogging
     case n: Int =>
       firstSieve ! n
     case FoundPrime(prime) =>
-      log.info("Found prime " + prime)
+      target ! FoundPrime(prime)
       toFind -= 1
-      if(toFind == 0)
+      if(toFind == 0) {
+        target ! Done
         context.stop(self)
-      else
+      } else
         numberSource ! Next
   }
 }

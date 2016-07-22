@@ -1,20 +1,22 @@
 package sieve
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import sieve.Eratosthenes.FoundPrime
 import sieve.NumberSource.Next
 
 object Sieve {
-  def props(target: ActorRef): Props = Props(new Sieve(target))
+  def props(target: ActorRef): Props = props(target, props)
+  def props(target: ActorRef, childProps: (ActorRef) => Props): Props = Props(new Sieve(target, childProps))
 }
-class Sieve private (target: ActorRef) extends Actor {
+
+class Sieve private (target: ActorRef, childProps: (ActorRef) => Props) extends Actor {
 
   override def receive: Receive = initial
 
   def initial: Receive = {
     case n: Int =>
       target ! FoundPrime(n)
-      val nextRef = context.actorOf(Sieve.props(target))
+      val nextRef = context.actorOf(childProps(target))
       context.become(sieving(n, nextRef), discardOld = true)
 
   }

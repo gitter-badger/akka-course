@@ -9,6 +9,6 @@ object GreeterMain {
     greeter ! Greet("World!")
     greeter ! Greet("Bob!")
     Thread.sleep(1000)
-    system.shutdown
+    system.terminate()
   }
 }

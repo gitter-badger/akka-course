@@ -1,0 +1,413 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; background-color: #f8f8f8; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+pre, code { background-color: #f8f8f8; }
+code > span.kw { color: #204a87; font-weight: bold; } /* Keyword */
+code > span.dt { color: #204a87; } /* DataType */
+code > span.dv { color: #0000cf; } /* DecVal */
+code > span.bn { color: #0000cf; } /* BaseN */
+code > span.fl { color: #0000cf; } /* Float */
+code > span.ch { color: #4e9a06; } /* Char */
+code > span.st { color: #4e9a06; } /* String */
+code > span.co { color: #8f5902; font-style: italic; } /* Comment */
+code > span.ot { color: #8f5902; } /* Other */
+code > span.al { color: #ef2929; } /* Alert */
+code > span.fu { color: #000000; } /* Function */
+code > span.er { color: #a40000; font-weight: bold; } /* Error */
+code > span.wa { color: #8f5902; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #000000; } /* Constant */
+code > span.sc { color: #000000; } /* SpecialChar */
+code > span.vs { color: #4e9a06; } /* VerbatimString */
+code > span.ss { color: #4e9a06; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #000000; } /* Variable */
+code > span.cf { color: #204a87; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #ce5c00; font-weight: bold; } /* Operator */
+code > span.pp { color: #8f5902; font-style: italic; } /* Preprocessor */
+code > span.ex { } /* Extension */
+code > span.at { color: #c4a000; } /* Attribute */
+code > span.do { color: #8f5902; font-weight: bold; font-style: italic; } /* Documentation */
+code > span.an { color: #8f5902; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #8f5902; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #8f5902; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+</head>
+<body>
+<h2 id="welcome-to-the-scalanator-akka-course">0 # Welcome to the Scalanator Akka Course</h2>
+<p><em>Note that this course is under development and the text and exercises may be incomplete</em></p>
+<p>Welcome to the Scalanator.io Akka course.</p>
+<p>This part of the course will give you with the background and experience needed to create effective scalable systems in Akka.</p>
+<p>Building large scale asynchronous systems can be a complex business. It is necessary to master concurrency, carrying out processes at the same time, parallelism, carrying out the same task by separate systems, dealing with faults and errors without compromising the integrity of the system and dealing with processes distributed across different systems.</p>
+<p>In Akka these problems are handled with ‘Actors’, a technical term used within programming. In simple terms an Actor is an isolated process that takes in, processes and transmits data in a predefined way.</p>
+<h2 id="building-a-mental-model---introduction">100 # Building a mental model - Introduction</h2>
+<p>The key concepts of the Actor model can be understood through an analogy:</p>
+<p>Welcome to Widget Inc.</p>
+<p>(Picture of office block)</p>
+<p>Think of a mail order company before the days of the internet. Customers would send in their orders and requests for information to the factory by letter. The letters would be processed within the factory and completed orders for the product despatched by mail to the customers.</p>
+<p>An incoming letter might be in the form:</p>
+<ul>
+<li>&quot;Please tell me the dimensions of your Widget&quot;</li>
+<li>&quot;Please tell me the price of 3 widgets&quot;</li>
+<li>&quot;Please send me 1 widget&quot;</li>
+</ul>
+<h2 id="building-a-mental-model---the-simplest-approach">110 # Building a mental model - The simplest approach</h2>
+<p>Suppose that Widget Inc is a one man band. Our sole worker processes incoming orders by working through his instruction list:</p>
+<ol style="list-style-type: decimal">
+<li>Wait for a letter</li>
+<li>Read the letter</li>
+<li>Action the letter</li>
+<li>Reply to the letter</li>
+<li>Repeat from step 1.</li>
+</ol>
+<p>As long as the worker can keep up with the number of letters being received there the process proceeds smoothly.</p>
+<p>However some tasks may take a long time. If a cheque is received the worker must go to the bank to cash it before the goods can be sent out. While the worker is cashing the cheque the ordering process is at a standstill until the banking process has been completed.</p>
+<h2 id="building-a-mental-model---the-simplest-approach---speeding-up">120 # Building a mental model - The simplest approach - Speeding up</h2>
+<p>Suppose that the business grows and our one worker cannot keep up with the flow of orders. How do we fix this? Add more workers!</p>
+<p>Each of our new workers follows the original set of instructions and each picks up incoming mail from a shared pile. In theory doubling the number of workers, doubles the throughput.</p>
+<p>If the company receives two widget orders, then two workers will:</p>
+<ol style="list-style-type: decimal">
+<li>Check there is a widget in the warehouse</li>
+<li>Go to the bank and cash the cheque</li>
+<li>Collect the widget and send it to the customer</li>
+</ol>
+<p>Suppose that two orders come in at the same time and there is only one widget in the warehouse. Two workers independently process their orders, both check the warehouse stock, confirm that one is in stock, and then go to the bank to cash their cheques.</p>
+<p>The first worker to return picks up the widget from the warehouse and sends it to the customer. The second worker gets to the warehouse and is stuck, he has taken payment, but there is no widget to send.</p>
+<h2 id="building-a-mental-model---the-simplest-approach---complexity-attacks">130 # Building a mental model - The simplest approach - Complexity attacks</h2>
+<p>The simple model with multiple workers acting independently has problems as many of the tasks need some interaction with other workers. As the number of workers increases so does the complexity. In our example with two workers we could have a warehouse key. The operating instructions now include:</p>
+<ol style="list-style-type: decimal">
+<li>Get the key to the warehouse</li>
+<li>Check the stock level</li>
+<li>Process the payment</li>
+<li>Get the item from the warehouse and send it to the customer</li>
+<li>Return the key</li>
+</ol>
+<p>Since there is only one warehouse key we still only handle one sales order at a time, no matter how many workers or widgets we have. If one worker has the key then the others are standing idle as they can’t proceed beyond step 1 of their instructions. We have solved one problem (preventing the same widget being ordered twice) but introduced another. More importantly, doubling the number of workers has not doubled the work output.</p>
+<h2 id="building-a-mental-model---fighting-the-complexity">140 # Building a mental model - Fighting the complexity</h2>
+<p>The underlying problem may be solvable, for instance, the worker could take the key, go into the warehouse, check the item, reserve it, return the key and then go to the bank. The problem is that the task complexity increases exponentially.</p>
+<p>Our workers are pedantic, they will follow the instructions they have been given exactly without introducing errors of their own. But they will give up if their instructions do not exactly cover what they are to do next. For instance, in the example above, what happens if the warehouse is empty or the bank is closed. Except for very simple tasks it may not be possible to write instructions that are completely clear and correct as well as covering all circumstances.</p>
+<p>How can we as writers of instructions meet these criteria? We must find a simplification that can be applied, bearing in mind that any simplification is a tradeoff between strengths and weaknesses.</p>
+<p>We are going to use a solution that goes back to the heart of efficient production in the Industrial Revolution - specialisation.</p>
+<h2 id="building-a-mental-model---fight-the-complexity---rebuilding-our-factory">150 # Building a mental model - Fight the complexity - Rebuilding our factory</h2>
+<p>In the real world we face two problems, the ability to write correct and complete instructions and the ability of our workers to follow them.</p>
+<p>In our imaginary world we only have to deal with the first problem in our factory since we know that our workers lack independent action and will slavishly follow whatever set of instructions they are given.</p>
+<p>So how do we create sets of instructions to meet all the requirements? The answer is isolation and specialisation. We are going to break things up and add some rules to make dealing with the problems easier.</p>
+<h2 id="building-a-mental-model---fight-the-complexity---rebuilding-our-factory-2">160 # Building a mental model - Fight the complexity - Rebuilding our factory 2</h2>
+<p>To return to the factory analogy, we hire more workers but make each worker’s job more focused. Rather than having each worker responsible for the whole order we are going to hire workers who each deal with different parts of the ordering process.</p>
+<h2 id="building-a-mental-model---the-new-design">200 # Building a mental model - The new design</h2>
+<p>Our new factory is going to go even further, every worker is going to be put in their own office. Additionally they will only be allowed to communicate with other parts of the factory by using a new message system.</p>
+<p>This is the general arrangement, the next section describes in more detail the different parts the new factory design and how they operate and interact. Some of the choices or rules may seem rather arbitrary at this point but we will deal with the underlying explanations later.</p>
+<h2 id="building-a-mental-model---the-new-design---messages">210 # Building a mental model - The new design - Messages</h2>
+<p>The first rule is that each worker can only communicate with other workers through a shiny new pneumatic message tube system.</p>
+<p>Message tube systems exist in the real world, for example <a href="https://www.youtube.com/watch?v=gAlzYLcqsTU">UMHS Pneumatic message system</a></p>
+<p>Messages gain some key properties:</p>
+<ol style="list-style-type: decimal">
+<li>A message can only go to a single recipient</li>
+<li>A message cannot be changed once it has been sent</li>
+<li>The order of messages from a given sender to a given receiver is always maintained</li>
+</ol>
+<h2 id="building-a-mental-model---the-new-design---workers-and-offices">220 # Building a mental model - The new design - Workers and Offices</h2>
+<p>Every office has an incoming message tube, an outgoing message tube, a pad of paper for keeping notes and an instruction manual.</p>
+<p>Each worker sits in their office waiting for messages. When they receive a message they read it then use their instruction manual that shows them what action to take.</p>
+<p>For example they could:</p>
+<ol style="list-style-type: decimal">
+<li>Do nothing and discard the message</li>
+<li>Update some information on their pad of paper</li>
+<li>Send new messages to others</li>
+<li>Forward the message to somebody else</li>
+<li>Some combination of these</li>
+</ol>
+<p>Each worker processes a one message at a time and ignores further incoming messages until that message has been handled.</p>
+<h2 id="building-a-mental-model---the-new-design---is-it-better">230 # Building a mental model - The new design - Is it better?</h2>
+<p>This new layout seems like a lot of work and set up for no obvious immediate gain. The key benefit (and the key benefit of all design patterns) is the ability to reason about each part of the design in isolation.</p>
+<p>Now, when thinking about the warehouse, we only need to worry about 'can I reserve X' or ‘please dispatch Y’ without having to deal with billing or any other aspect of the business. In the warehouse we only need to know:</p>
+<ul>
+<li>The current state (what stock we have)</li>
+<li>The current message we are processing</li>
+</ul>
+<h2 id="building-a-mental-model---managing-workers">270 # Building a mental model - Managing workers</h2>
+<p>The workers in our factory are highly strung. If at any time they arrive at a situation not covered by their instructions they trash their office and walk out. No matter how careful we are with the instructions it is always possible that we have missed something that could cause a failure in the process, so how do we handle this?</p>
+<p>We handle this issue through supervision. Each worker is hired and and managed by a single supervisor. If the worker quits, the supervisor is informed. The supervisor may then do one of several things:</p>
+<ol style="list-style-type: decimal">
+<li>Accept it and continue</li>
+<li>Hire a replacement worker</li>
+<li>Quit themselves</li>
+</ol>
+<p>Everyone has a supervisor, including the supervisor. Each of the higher supervisors may also have a supervisor above them. Unlike a factory in the real world there is a single chain of supervisors above each worker, no supervisor oversees more that one worker and only reports to one supervisor above. If a supervisor quits for any reason the supervisors below them and the worker at the bottom are summarily fired.</p>
+<p>At the very top there is a special ‘company guardian’ supervising all the chains of supervisors and workers. If a supervisor at the top of a chain quits then the guardian take a number of actions which can include shutting down the entire company.</p>
+<h2 id="building-a-mental-model---expensive-workers">250 # Building a mental model - Expensive workers</h2>
+<p>Let us imagine for a moment that workers are expensive and overheads need to be reduced without affecting the running of the company.</p>
+<p>With the previous model, where each worker has their own office, workers will be idle a lot of the time as they sit in their office waiting for a new message. Let’s fire them all workers but keep their offices and their contents. We will employ a single worker to rove around the building, looking for offices with messages waiting. If he sees one, he pops in, uses the instructions in the office to handle the message and then goes back to roaming the building.</p>
+<p>When you think about this all of the work will still get done. No two pieces of work are done at the same time (it might be slower), but the final outcome is exactly the same.</p>
+<p>This is 'concurrency', we are 'dealing with a lot of things at once', without getting confused or losing track.</p>
+<h2 id="building-a-mental-model---expensive-workers-2">260 # Building a mental model - Expensive workers 2</h2>
+<p>To speed things up we could hire more workers to roam the building. This is 'parallelism', multiple tasks are being carried out simultaneously.</p>
+<p>It is worth keeping these two goals in mind, dividing work into chunks that can be done simultaneously and increasing throughput by doing them at the same time.</p>
+<p>In most cases it is easier to think about a single worker working in a single room.</p>
+<h2 id="building-a-mental-model---why-this-model-works">240 # Building a mental model - Why this model works</h2>
+<p>This model achieves two things, firstly it is much easier to reason (better for us) about and secondly we can have workers working in parallel.</p>
+<p>For tasks that are independent the workers can perform their jobs simultaneously. For example a billing a customer and sending an order.</p>
+<p>Work that needs to be coordinated (such as two order reservations in the warehouse) are processed in a consistent way by a single worker.</p>
+<h2 id="moving-to-the-real-world">500 # Moving to the real world</h2>
+<h2 id="our-program">505 # Our program</h2>
+<p>The program we are creating is our factory. To create the factory we define</p>
+<h2 id="actors---introduction">510 # Actors - Introduction</h2>
+<p>In Akka parlance each worker is an Actor. Actors are simply classes that extend the class <code>Actor</code>. The only requirement is that you implement the <code>receive</code> function. Each message sent to your Actor’s mailbox is handed to this function in turn. You can think of this as a single thread performing this action:</p>
+<pre><code>while(true) {
+    val message = mailBox.take() // block if none ready
+    Actor.receive(message)
+}</code></pre>
+<p>This means that within the <code>receive</code> function you do not need to worry about multi-threading at all. However, if you block within your Actor's <code>receive</code> block you will not have any more messages delivered.</p>
+<h2 id="actors---our-first-actor">515 # Actors - Our first Actor</h2>
+<p>Let us implement our first Actor. When this Actor receives a <code>SayHello</code> message it will log the String “Hello name” - where the name comes from the message. If it receives any other message it will simply log that it did not recognise the message.</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">import</span> akka.<span class="fu">Actor</span>.{Actor, ActorLogging}
+
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">SayHello</span>(name: String)
+
+<span class="kw">class</span> HelloActor <span class="kw">extends</span> Actor <span class="kw">with</span> ActorLogging {
+
+  <span class="kw">def</span> receive = {
+    <span class="kw">case</span> <span class="fu">SayHello</span>(name) =&gt; log.<span class="fu">info</span>(s<span class="st">&quot;Hello $name&quot;</span>)
+    <span class="kw">case</span> _      =&gt; log.<span class="fu">info</span>(<span class="st">&quot;received unknown message&quot;</span>)
+  }
+}</code></pre></td></tr></table></div>
+<h2 id="actors---introducing-actorrefs">550 # Actors - Introducing <code>ActorRef</code>s</h2>
+<p>An Actor is just a class, which means if we had a reference to a given Actor we could easily break encapsulation and thread safety by directly accessing the Actors methods and variables.</p>
+<p>In Akka we never deal with an Actor directly, but only by its handle. The <code>ActorRef</code> is an Actor’s 'address card'. In our mental model you could think of this as the assigned office number. You can only send someone a message if you know where they are.</p>
+<p>In Akka you never construct an <code>ActorRef</code> yourself. There are three primary ways to obtain a reference: 1. When you ask Akka to construct an Actor (we will cover this later), you are returned the <code>ActorRef</code>. 2. Within an Actor you can see <code>self</code> which is your own Actor reference and <code>sender</code> which is the address of the message sender of the current message. 3. An Actor can also see the <code>ActorRef</code> of its parent, and any children it has created. 3. You can received an <code>ActorRef</code> in a message.</p>
+<h2 id="actors---sending-messages">560 # Actors - Sending messages</h2>
+<p>All inter-Actor communication is through message. To send an Actor a message by using the <code>ActorRef</code> using the <code>!</code> method:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">  ref ! message</code></pre></div>
+<p>Remember, this is asynchronous, but one extra rule is applied:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">  ref ! message1
+  ref ! message2</code></pre></div>
+<p><code>message1</code> will be delivered to <code>ref</code> before <code>message2</code></p>
+<h2 id="actors---your-turn">570 # Actors - Your turn</h2>
+<p>For this exercise, update the Actor to send back the received message to the sender:</p>
+<p>@:editor file=exercises/first/FirstActor.scala</p>
+<h2 id="actors---creating-actors-with-props">575 # Actors - Creating Actors with Props</h2>
+<p>One thing that might seem strange at first is that you do not type:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> myActor = <span class="kw">new</span> <span class="fu">FirstActor</span>()</code></pre></div>
+<p>Instead you create a Props object such as:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> myActorRef = system.<span class="fu">ActorOf</span>(<span class="fu">Props</span>(<span class="kw">new</span> <span class="fu">FirstActor</span>()))</code></pre></div>
+<p>outside an Actor or:</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">val</span> myActorRef = context.<span class="fu">system</span>.<span class="fu">ActorOf</span>(<span class="fu">Props</span>(<span class="kw">new</span> <span class="fu">FirstActor</span>())</code></pre></td></tr></table></div>
+<p>inside an Actor.</p>
+<p>A <code>Props</code> is a definition of an Actor - it is a immutable, shareable factory for creating instances (we will do more with this feature later). Whilst it feels long winded this pattern helps us do several things:</p>
+<ol style="list-style-type: decimal">
+<li>Hides the actual object reference (we only want the ActorRef).</li>
+<li>Allows sharing of creation patterns (more on that later)</li>
+<li>Maintains the supervisor/child relationship</li>
+</ol>
+<h2 id="actors---creating-actors-with-props-2">580 # Actors - Creating Actors with Props 2</h2>
+<p>There are three ways of creating a <code>Props</code> instance:</p>
+<h3 id="no-parameter-type-creation">No parameter type creation</h3>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> props = Props[FirstActor]</code></pre></div>
+<h3 id="using-a-type-constructor">Using a type constructor</h3>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> props = <span class="fu">Props</span>(classOf[ActorWithParams], <span class="st">&quot;param1&quot;</span>, <span class="st">&quot;param2&quot;</span>...)</code></pre></div>
+<p>One problem with this constructor is that is is not typesafe, the parameters are only checked via reflection at runtime.</p>
+<h3 id="using-a-type-constructor-1">Using a type constructor</h3>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> props = <span class="fu">Props</span>(classOf[ActorWithParams], <span class="st">&quot;param1&quot;</span>, <span class="st">&quot;param2&quot;</span>...)</code></pre></div>
+<h3 id="using-a-lazy-constructor">Using a lazy constructor</h3>
+<p>XXXX REWORK THIS - lazy constructor</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> props = <span class="fu">Props</span>(<span class="kw">new</span> <span class="fu">ActorWithParams</span>(<span class="st">&quot;param1&quot;</span>, <span class="st">&quot;param2&quot;</span>...))</code></pre></div>
+<p>This is our preferred way of constructing Actors, however it does have a dangerous side.</p>
+<h2 id="actors---creating-actors-with-props-3">590 # Actors - Creating Actors with Props 3</h2>
+<p>If you call</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala"><span class="kw">val</span> props = <span class="fu">Props</span>(<span class="kw">new</span> <span class="fu">ActorWithParams</span>(<span class="st">&quot;param1&quot;</span>, <span class="st">&quot;param2&quot;</span>...))</code></pre></div>
+<p>Within an Actor you can risk closing over the Actor’s internal state (i.e. granting access to an immutable internal variable which should not have been exposed).</p>
+<p>A simply pattern prevents this:</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">import</span> akka.<span class="fu">Actor</span>.{Actor, ActorLogging, Props}
+
+<span class="kw">case</span> <span class="kw">class</span> <span class="fu">SayHello</span>(name: String)
+
+<span class="kw">class</span> GreetActor <span class="kw">private</span> (greeting: String) <span class="kw">extends</span> Actor <span class="kw">with</span> ActorLogging {
+
+  <span class="kw">def</span> receive = {
+    <span class="kw">case</span> <span class="fu">SayHello</span>(name) =&gt; log.<span class="fu">info</span>(<span class="st">&quot;$greeting $name&quot;</span>)
+    <span class="kw">case</span> _      =&gt; log.<span class="fu">info</span>(<span class="st">&quot;received unknown message&quot;</span>)
+  }
+}
+
+<span class="kw">object</span> GreetActor {
+  <span class="kw">def</span> <span class="fu">props</span>(greeting: String): Props =
+    <span class="fu">Props</span>(<span class="kw">new</span> <span class="fu">GreetActor</span>(greeting))
+}</code></pre></td></tr></table></div>
+<p>Marking the constructor private and pushing the construction of the Props into a method on the companion object means that people cannot accidentally close over state, but maintain compile time type safety.</p>
+<h2 id="sieve---the-sieve-of-eratosthenes">1000 # Sieve - The Sieve of Eratosthenes</h2>
+<p>To give you a sense of build systems out of Actors we are going to build a small application.</p>
+<h2 id="sieve---the-sieve-of-eratosthenes-1">1010 # Sieve - The 'Sieve of Eratosthenes'</h2>
+<p>A very simple way to find prime numbers from the list of all integers is through sieving. Each sieve is a set of instructions that weeds out non-prime numbers.</p>
+<p>A prime number is defined as a number that is only divisible by itself and 1.</p>
+<p>Each sieve will remove any number exactly divisible by the first number it sees.</p>
+<p>The first number the first sieve sees is 2. This is a prime number, the only even prime number as any other even number will be divisible by 2 so, by the definition, cannot be a prime number. The first sieve is the 2 sieve that will move along the list of integers removing any number which is an exact multiple of 2 (4,6,8 etc).</p>
+<p>When this process has been completed the next sieve number is advanced by 1 so it will set number 3 as a prime and sieve out exact multiples of three. That is, it sees and removes 3,9,15 and so on. It will not see 6 and 12 even though they are multiples of 3 because they have already been removed by the previous sieve.</p>
+<p>The next sieve will be the 5 sieve as 4 has already been removed.</p>
+<p>Each sieve will begin seeing a prime number and then will remove any multiples of that prime number.</p>
+<p>We are going to build an application which implements an Actor based sieve to find the first N primes and explore some Akka features along the way.</p>
+<h2 id="sieve---the-source">1020 # Sieve - The source</h2>
+<p>Our first task is to create a number source to provide the next integer in the sequence to the requestor.</p>
+<p>A formal definition of the Actor is as follows:</p>
+<ul>
+<li>Take a given initial seed</li>
+<li>Each time a 'Next' message is received reply with the next number in the highest integer (starting with the seed)</li>
+</ul>
+<p>Here is our Actor outline</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">package</span> sieve
+
+<span class="kw">import</span> akka.<span class="fu">Actor</span>.{Actor, Props}
+<span class="kw">import</span> sieve.<span class="fu">NumberSource</span>.<span class="fu">Next</span>
+
+<span class="kw">object</span> NumberSource {
+  <span class="kw">def</span> <span class="fu">props</span>(start: Int): Props = <span class="fu">Props</span>(<span class="kw">new</span> <span class="fu">NumberSource</span>(start))
+
+  <span class="kw">case</span> <span class="kw">object</span> Next
+}
+
+<span class="kw">class</span> NumberSource <span class="kw">private</span> (seed: Int) <span class="kw">extends</span> Actor {
+
+  <span class="kw">private</span> <span class="kw">var</span> next = ???
+  <span class="kw">override</span> <span class="kw">def</span> receive = {
+    <span class="kw">case</span> Next =&gt;
+        ???
+  }
+}</code></pre></td></tr></table></div>
+<p>This follows the template from the previous example.</p>
+<h2 id="sieve---black-box-testing">1030 # Sieve - Black box testing</h2>
+<p>Let us do a little bit of test driven development, TDD for short. One of the facets that make Actors so compelling is their inherent testability. In most cases (except, for example, when it is wrapping underlying IO) a well designed Actor has external interactions other than the messages it receives, sends and the child Actors it creates.</p>
+<p>Akka comes with the Akka TestKit, a set of test utilities that make it easy to exercise an Actor’s behaviour. Below is a simple test of the Number source (our testing would generally be a little more extensive than this ;) )</p>
+<p>Take a look at the following code:</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">val</span> numberSource = system.<span class="fu">ActorOf</span>(NumberSource.<span class="fu">props</span>(<span class="dv">10</span>))
+numberSource ! NumberSource.<span class="fu">Next</span>
+<span class="fu">expectMsg</span>(<span class="dv">10</span>)
+numberSource ! NumberSource.<span class="fu">Next</span>
+<span class="fu">expectMsg</span>(<span class="dv">11</span>)
+numberSource ! NumberSource.<span class="fu">Next</span>
+<span class="fu">expectMsg</span>(<span class="dv">12</span>)</code></pre></td></tr></table></div>
+<p>This code is executed within a test harness that will be covered in the next lesson. By default the test kit uses itself as the message sender (the <code>sender</code> you will reply to).</p>
+<p>On line 1 we create an instance of the Number Source class. One line 2 we send the number source the <code>Next</code> message (defined on the <code>NumberSource</code> companion object) One line 3 we wait a message in reply (in this case 10). We then send <code>Next</code> again expecting to receive the next number in the sequence.</p>
+<h2 id="sieve---implementing-the-numbersource---your-turn">1040 # Sieve - Implementing the NumberSource - your turn</h2>
+<p>You task is to now implement the <code>NumberSource</code> behaviour</p>
+<p>@:editor file=exercises/createns/NumberSource.scala</p>
+<h2 id="sieve---creating-the-sieve">1050 # Sieve - Creating the sieve</h2>
+<p>So let us define our Sieve Actor. The sieve Actor:</p>
+<ul>
+<li>Takes a <code>target</code> to which to send primes and requests for more numbers.</li>
+<li>Publishes the first number it sees as a prime, using the message <code>FoundPrime()</code> and creates a new child sieve.</li>
+<li>From then on filter all remaining numbers</li>
+<li>If it is exactly divisible by <code>prime</code> sends <code>Next</code> to the <code>target</code> to request a new number.</li>
+<li>It is is not divisible forward to the next sieve (child).</li>
+</ul>
+<h2 id="sieve---immutability-in-actors-and-becoming">1060 # Sieve - Immutability in Actors and becoming</h2>
+<p>The <code>Sieve</code> Actor has two distinct states, before and after it has seen its first number. We can model this in two ways, firstly we could have mutable variables for the prime number and the child reference (both of which need to handle subsequent numbers) or we can use the <code>become</code> method.</p>
+<p>The simplest Actor says</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">override</span> <span class="kw">def</span> receive: Receive = {
+    <span class="kw">case</span> x =&gt; <span class="co">// do something with x</span>
+}</code></pre></td></tr></table></div>
+<p>become allows us to substitute an alternative receive method which can take parameters. As an example:</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+2
+3
+4
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala"><span class="kw">def</span> <span class="fu">gotPrimeReceive</span>(prime: Int): Receive = {
+    <span class="kw">case</span> x : Int =&gt;
+
+}</code></pre></td></tr></table></div>
+<p>To switch incoming messages to use the method we simply call:</p>
+<div class="sourceCode"><table class="sourceCode scala numberLines"><tr class="sourceCode"><td class="lineNumbers"><pre>1
+</pre></td><td class="sourceCode"><pre><code class="sourceCode scala">context.<span class="fu">become</span>(<span class="fu">gotPrimeReceive</span>(p, <span class="kw">true</span>)</code></pre></td></tr></table></div>
+<p>The second parameter allow us to handle receives as a stack, pushing and popping receive handlers - in our case we simply want to <code>become</code> a new state and discard to previous one.</p>
+<h2 id="sieve---testing-actors-that-create-children">1060 # Sieve - Testing Actors that create children</h2>
+<p>Testing the behaviour of Actors that create children is fiddly. If the parent creates an child by simply:</p>
+<div class="sourceCode"><pre class="sourceCode scala"><code class="sourceCode scala">context.<span class="fu">ActorOf</span>(Sieve.<span class="fu">props</span>(target))</code></pre></div>
+<p>XXXXXX</p>
+<h2 id="sieve---your-turn">1070 # Sieve - Your Turn</h2>
+<p>@:editor file=exercises/createsieve/Sieve.scala</p>
+<h2 id="random-stuff">3000 # Random Stuff</h2>
+<h2 id="futures-and-closure-over-state">3010 # Futures and closure over state</h2>
+<p>TODO Talk about closing over state and moving future work outside of the Actor into companion to avoid.</p>
+<h2 id="rules-for-actors">4000 # Rules for Actors</h2>
+<h3 id="only-use-immutable-messages">1. Only use immutable messages</h3>
+<p>Passing a mutable state in messages is the road to madness. By not obeying this cardinal rule you have thrown away all of the safety the Actor system has built. We recommend you use case classes and immutable data structures for all messages. The one exception we generally make for this is the passing of a <code>Promise</code> to allow results to be shared in multiple places.</p>
+<h3 id="never-block-your-actor">2. Never Block your Actor</h3>
+<p>Putting a blocking call in your Actor means that it is unreachable, it will not receive any other messages until the blocking call has completed and cannot be interrupted.</p>
+<p>Use futures, <code>become</code> and messages to avoid blocking (e.g. doing an <code>ask</code>)</p>
+<h3 id="never-let-state-leak-out-of-your-actor">3. Never let state leak out of your Actor</h3>
+<p>To maintain the model’s integrity do not expose any internal state of your Actor outside of the Actor. Avoid:</p>
+<ol style="list-style-type: decimal">
+<li>Creating <code>Props</code> of a child directly in your class, see the discussion in the <code>Props</code> section.</li>
+<li>Be careful with <code>future.onComplete</code> and its friends - code in the completion block is executed in the futures thread space, not on the Actor thread, meaning you exposing Actor state outside the Actor.</li>
+</ol>
+<h2 id="fin">9999 # Fin</h2>
+<p>You made it - thanks for coming!</p>
+<p>We hope you have enjoyed this course - we would love to hear your feedback.</p>
+</body>
+</html>
